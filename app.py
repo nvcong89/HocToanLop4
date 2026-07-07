@@ -1,6 +1,6 @@
 import streamlit as st
-import os  # ← thêm dòng này vào phần import
-
+import os
+from utils.ai_tutor import ask_ai, explain_wrong_answer, generate_hint
 from utils.pdf_viewer import (
     render_pdf_viewer,
     render_page_links,
@@ -8,7 +8,6 @@ from utils.pdf_viewer import (
 )
 
 PDF_PATH = "data/toan4.pdf"
-
 
 from topics import (
     addition_subtraction,
@@ -125,6 +124,12 @@ if "total" not in st.session_state:
     st.session_state.total = 0
 if "current_topic" not in st.session_state:
     st.session_state.current_topic = "🏠 Trang Chủ"
+if "sgk_page" not in st.session_state:          # ← fix: tránh lỗi KeyError
+    st.session_state["sgk_page"] = 1
+if "sgk_lesson" not in st.session_state:
+    st.session_state["sgk_lesson"] = ""
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
 
 # ─── Sidebar Navigation ───────────────────────────────────────
 with st.sidebar:
@@ -132,14 +137,14 @@ with st.sidebar:
     st.markdown("---")
 
     topics = {
-        "🏠 Trang Chủ": "home",
-        "📖 Sách Giáo Khoa":  "sgk",
-        "➕ Cộng & Trừ": "add_sub",
-        "✖️ Nhân & Chia": "mul_div",
-        "🍕 Phân Số": "fractions",
-        "📐 Hình Học": "geometry",
-        "📏 Đo Lường": "measurement",
-        "📝 Toán Đố": "word_problems",
+        "🏠 Trang Chủ"      : "home",
+        "📖 Sách Giáo Khoa" : "sgk",
+        "➕ Cộng & Trừ"     : "add_sub",
+        "✖️ Nhân & Chia"    : "mul_div",
+        "🍕 Phân Số"        : "fractions",
+        "📐 Hình Học"       : "geometry",
+        "📏 Đo Lường"       : "measurement",
+        "📝 Toán Đố"        : "word_problems",
     }
 
     for label in topics:
@@ -149,6 +154,8 @@ with st.sidebar:
             st.session_state.total = 0
 
     st.markdown("---")
+
+    # ── Bảng điểm ─────────────────────────────────────────────
     if st.session_state.total > 0:
         pct = int(st.session_state.score / st.session_state.total * 100)
         st.markdown(f"""
@@ -162,9 +169,50 @@ with st.sidebar:
         st.session_state.score = 0
         st.session_state.total = 0
 
+    # ── AI Chat ───────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### 🤖 Hỏi Gia Sư AI")
+
+    # Hiển thị lịch sử chat
+    chat_container = st.container(height=250)
+    with chat_container:
+        for msg in st.session_state["chat_history"]:
+            if msg["role"] == "user":
+                st.markdown(f"🧒 **Em:** {msg['content']}")
+            else:
+                st.markdown(f"🤖 **Thầy:** {msg['content']}")
+
+    # Input câu hỏi
+    user_input = st.chat_input("Hỏi thầy bất cứ điều gì...")
+
+    if user_input:
+        st.session_state["chat_history"].append({
+            "role": "user",
+            "content": user_input
+        })
+
+        with st.spinner("Thầy đang suy nghĩ..."):
+            answer = ask_ai(
+                user_input,
+                st.session_state["chat_history"][:-1]
+            )
+
+        st.session_state["chat_history"].append({
+            "role": "assistant",
+            "content": answer
+        })
+        st.rerun()
+
+    # Nút xóa lịch sử
+    if st.session_state["chat_history"]:
+        if st.button("🗑️ Xóa lịch sử chat", use_container_width=True):
+            st.session_state["chat_history"] = []
+            st.rerun()
+
 # ─── Main Content ─────────────────────────────────────────────
 topic = st.session_state.current_topic
 
+# ── Trang Chủ ─────────────────────────────────────────────────
 if topic == "🏠 Trang Chủ":
     st.markdown("""
     <div class="main-header">
@@ -212,6 +260,7 @@ if topic == "🏠 Trang Chủ":
 
     st.markdown("---")
     st.info("👈 Chọn chủ đề ở thanh bên trái để bắt đầu luyện tập!")
+
     # ── Author Section ─────────────────────────────────────────
     st.markdown("---")
     st.markdown("""
@@ -304,7 +353,8 @@ if topic == "🏠 Trang Chủ":
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
+
+# ── Các Chủ Đề Luyện Tập ──────────────────────────────────────
 elif topic == "➕ Cộng & Trừ":
     addition_subtraction.show()
 
@@ -322,10 +372,11 @@ elif topic == "📏 Đo Lường":
 
 elif topic == "📝 Toán Đố":
     word_problems.show()
+
+# ── Sách Giáo Khoa ────────────────────────────────────────────
 elif topic == "📖 Sách Giáo Khoa":
     st.markdown("## 📖 Sách Giáo Khoa Toán 4")
 
-    # Kiểm tra file tồn tại không
     if not os.path.exists(PDF_PATH):
         st.error("⚠️ Không tìm thấy file PDF!")
         st.markdown(f"""
@@ -341,17 +392,18 @@ elif topic == "📖 Sách Giáo Khoa":
     # ── Nhảy nhanh theo chủ đề ────────────────────────────────
     st.markdown("### 🗂️ Nhảy Đến Chủ Đề")
     topic_cols = st.columns(len(TOPIC_PAGES))
-    for i, (topic_name, lessons) in enumerate(TOPIC_PAGES.items()):
+    for i, (topic_key, lessons) in enumerate(TOPIC_PAGES.items()):   # ← fix: topic → topic_key
         with topic_cols[i]:
             first_page = list(lessons.values())[0]
             if st.button(
-                topic_name,
-                key=f"jump_{topic_name}",
+                topic_key,
+                key=f"jump_{topic_key}",
                 use_container_width=True,
                 help=f"Nhảy đến trang {first_page}"
             ):
                 st.session_state["sgk_page"]   = first_page
                 st.session_state["sgk_lesson"] = list(lessons.keys())[0]
+                st.rerun()   # ← fix: thêm rerun để cập nhật ngay
 
     st.markdown("---")
 
@@ -413,8 +465,8 @@ elif topic == "📖 Sách Giáo Khoa":
     # ── Mục lục bài học ───────────────────────────────────────
     st.markdown("---")
     st.markdown("### 📋 Mục Lục Bài Học")
-    for topic_name, lessons in TOPIC_PAGES.items():
-        with st.expander(f"{topic_name} — {len(lessons)} bài"):
+    for topic_key, lessons in TOPIC_PAGES.items():                    # ← fix: topic → topic_key
+        with st.expander(f"{topic_key} — {len(lessons)} bài"):
             for lesson_name, page_num in lessons.items():
                 col_a, col_b = st.columns([3, 1])
                 with col_a:
@@ -422,11 +474,9 @@ elif topic == "📖 Sách Giáo Khoa":
                 with col_b:
                     if st.button(
                         f"Trang {page_num}",
-                        key=f"toc_{topic_name}_{page_num}",
+                        key=f"toc_{topic_key}_{page_num}",            # ← fix: topic → topic_key
                         use_container_width=True
                     ):
                         st.session_state["sgk_page"]   = page_num
                         st.session_state["sgk_lesson"] = lesson_name
                         st.rerun()
-
-
