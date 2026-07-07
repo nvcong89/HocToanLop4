@@ -39,7 +39,7 @@ def show():
     with tab2:
         st.markdown("### ✏️ Tính Chu Vi & Diện Tích")
         shape = st.radio("Chọn hình:", ["Hình Chữ Nhật", "Hình Vuông", "Hỗn hợp"], horizontal=True)
-        num_q = st.slider("Số câu:", 3, 8, 4, key="geo_num")
+        num_q = st.slider("Số câu:", 3, 30, 4, key="geo_num")
 
         if st.button("🎲 Tạo Bài Hình Học", key="gen_geo"):
             problems = []
