@@ -46,7 +46,7 @@ def show():
     with tab2:
         st.markdown("### ✏️ Luyện Đổi Đơn Vị")
         unit_type = st.radio("Loại đơn vị:", ["Độ dài", "Khối lượng", "Thời gian"], horizontal=True)
-        num_q = st.slider("Số câu:", 3, 8, 5, key="meas_num")
+        num_q = st.slider("Số câu:", 3, 30, 5, key="meas_num")
 
         type_map = {"Độ dài": "length", "Khối lượng": "weight", "Thời gian": "time"}
 

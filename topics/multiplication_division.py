@@ -58,7 +58,7 @@ def show():
             level = st.select_slider("Độ khó:", options=[1, 2, 3],
                                      format_func=lambda x: ["Dễ", "Trung bình", "Khó"][x-1],
                                      key="mul_div_level")
-            num_q = st.slider("Số câu hỏi:", 3, 10, 5, key="mul_div_num")
+            num_q = st.slider("Số câu hỏi:", 3, 30, 5, key="mul_div_num")
 
         with col2:
             if st.button("🎲 Tạo Bài Tập Mới", key="gen_mul_div", use_container_width=True):

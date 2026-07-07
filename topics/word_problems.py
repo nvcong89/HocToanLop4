@@ -257,7 +257,7 @@ def show():
                 list(PROBLEM_GENERATORS.keys()) + ["🔀 Ngẫu nhiên"],
                 key="wp_type_select"
             )
-            num_q = st.slider("Số bài:", 1, 5, 3, key="wp_num")
+            num_q = st.slider("Số bài:", 1, 10, 3, key="wp_num")
 
         with col2:
             if st.button("🎲 Tạo Bài Toán Đố", use_container_width=True, key="gen_wp"):

@@ -60,7 +60,7 @@ def show():
             op = st.selectbox("Chọn phép tính:", ["Cộng ➕", "Trừ ➖", "Hỗn hợp 🔀"])
             level = st.select_slider("Độ khó:", options=[1, 2, 3],
                                      format_func=lambda x: ["Dễ", "Trung bình", "Khó"][x-1])
-            num_q = st.slider("Số câu hỏi:", 3, 10, 5)
+            num_q = st.slider("Số câu hỏi:", 3, 30, 5)
 
         with col2:
             if st.button("🎲 Tạo Bài Tập Mới", use_container_width=True):
