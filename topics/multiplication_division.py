@@ -5,6 +5,11 @@ from utils.generator import gen_multiplication, gen_division
 def show():
     st.markdown("## ✖️ Nhân & Chia Các Số Có Nhiều Chữ Số")
 
+    # ── Liên kết SGK ──────────────────────────────────────────
+    from utils.pdf_viewer import render_page_links
+    with st.expander("📖 Xem trang SGK liên quan", expanded=False):
+        render_page_links("✖️ Nhân & Chia")
+
     tab1, tab2, tab3 = st.tabs(["📖 Lý Thuyết", "✏️ Luyện Tập", "🧮 Bảng Nhân"])
 
     with tab1:

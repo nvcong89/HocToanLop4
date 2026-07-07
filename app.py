@@ -1,4 +1,15 @@
 import streamlit as st
+import os  # ← thêm dòng này vào phần import
+
+from utils.pdf_viewer import (
+    render_pdf_viewer,
+    render_page_links,
+    TOPIC_PAGES,
+)
+
+PDF_PATH = "data/toan4.pdf"
+
+
 from topics import (
     addition_subtraction,
     multiplication_division,
@@ -122,6 +133,7 @@ with st.sidebar:
 
     topics = {
         "🏠 Trang Chủ": "home",
+        "📖 Sách Giáo Khoa":  "sgk",
         "➕ Cộng & Trừ": "add_sub",
         "✖️ Nhân & Chia": "mul_div",
         "🍕 Phân Số": "fractions",
@@ -310,3 +322,111 @@ elif topic == "📏 Đo Lường":
 
 elif topic == "📝 Toán Đố":
     word_problems.show()
+elif topic == "📖 Sách Giáo Khoa":
+    st.markdown("## 📖 Sách Giáo Khoa Toán 4")
+
+    # Kiểm tra file tồn tại không
+    if not os.path.exists(PDF_PATH):
+        st.error("⚠️ Không tìm thấy file PDF!")
+        st.markdown(f"""
+        **Hướng dẫn:**
+        1. Tạo thư mục `data/` trong project
+        2. Đặt file PDF sách toán vào đó
+        3. Đổi tên thành `toan4.pdf`
+
+        📁 Đường dẫn cần có: `{PDF_PATH}`
+        """)
+        st.stop()
+
+    # ── Nhảy nhanh theo chủ đề ────────────────────────────────
+    st.markdown("### 🗂️ Nhảy Đến Chủ Đề")
+    topic_cols = st.columns(len(TOPIC_PAGES))
+    for i, (topic_name, lessons) in enumerate(TOPIC_PAGES.items()):
+        with topic_cols[i]:
+            first_page = list(lessons.values())[0]
+            if st.button(
+                topic_name,
+                key=f"jump_{topic_name}",
+                use_container_width=True,
+                help=f"Nhảy đến trang {first_page}"
+            ):
+                st.session_state["sgk_page"]   = first_page
+                st.session_state["sgk_lesson"] = list(lessons.keys())[0]
+
+    st.markdown("---")
+
+    # ── Điều hướng trang ──────────────────────────────────────
+    col_prev, col_page, col_next, col_goto, col_info = st.columns([1, 1.5, 1, 1, 2.5])
+
+    current_page = st.session_state.get("sgk_page", 1)
+
+    with col_prev:
+        if st.button("⬅️ Trước", use_container_width=True):
+            st.session_state["sgk_page"] = max(1, current_page - 1)
+            st.session_state["sgk_lesson"] = ""
+            st.rerun()
+
+    with col_page:
+        manual_page = st.number_input(
+            "Trang:",
+            min_value=1,
+            max_value=200,
+            value=current_page,
+            step=1,
+            key="manual_page_input",
+            label_visibility="collapsed"
+        )
+
+    with col_next:
+        if st.button("Sau ➡️", use_container_width=True):
+            st.session_state["sgk_page"] = current_page + 1
+            st.session_state["sgk_lesson"] = ""
+            st.rerun()
+
+    with col_goto:
+        if st.button("📌 Đến Trang", use_container_width=True):
+            st.session_state["sgk_page"]   = manual_page
+            st.session_state["sgk_lesson"] = ""
+            st.rerun()
+
+    with col_info:
+        lesson_name = st.session_state.get("sgk_lesson", "")
+        if lesson_name:
+            st.info(f"📄 Trang **{current_page}** — {lesson_name}")
+        else:
+            st.info(f"📄 Đang xem trang **{current_page}**")
+
+    st.markdown("---")
+
+    # ── Slider chiều cao ──────────────────────────────────────
+    viewer_height = st.slider(
+        "Chiều cao khung xem:",
+        min_value=400, max_value=1000,
+        value=700, step=50,
+        key="pdf_height"
+    )
+
+    # ── Render PDF ────────────────────────────────────────────
+    current_page = st.session_state.get("sgk_page", 1)
+    render_pdf_viewer(PDF_PATH, page=current_page, height=viewer_height)
+
+    # ── Mục lục bài học ───────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### 📋 Mục Lục Bài Học")
+    for topic_name, lessons in TOPIC_PAGES.items():
+        with st.expander(f"{topic_name} — {len(lessons)} bài"):
+            for lesson_name, page_num in lessons.items():
+                col_a, col_b = st.columns([3, 1])
+                with col_a:
+                    st.markdown(f"📌 {lesson_name}")
+                with col_b:
+                    if st.button(
+                        f"Trang {page_num}",
+                        key=f"toc_{topic_name}_{page_num}",
+                        use_container_width=True
+                    ):
+                        st.session_state["sgk_page"]   = page_num
+                        st.session_state["sgk_lesson"] = lesson_name
+                        st.rerun()
+
+

@@ -5,6 +5,11 @@ from utils.generator import gen_unit_conversion
 def show():
     st.markdown("## 📏 Đo Lường")
 
+    # ── Liên kết SGK ──────────────────────────────────────────
+    from utils.pdf_viewer import render_page_links
+    with st.expander("📖 Xem trang SGK liên quan", expanded=False):
+        render_page_links("📏 Đo Lường")
+
     tab1, tab2, tab3 = st.tabs(["📖 Bảng Đơn Vị", "✏️ Đổi Đơn Vị", "⏰ Thời Gian"])
 
     with tab1:

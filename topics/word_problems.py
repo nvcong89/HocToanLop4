@@ -206,6 +206,11 @@ def _format_ans(p):
 def show():
     st.markdown("## 📝 Toán Đố — Bài Toán Có Lời Văn")
 
+    # ── Liên kết SGK ──────────────────────────────────────────
+    from utils.pdf_viewer import render_page_links
+    with st.expander("📖 Xem trang SGK liên quan", expanded=False):
+        render_page_links("📝 Toán Đố")
+
     tab1, tab2, tab3 = st.tabs(["📖 Hướng Dẫn", "✏️ Luyện Tập", "🎯 Thi Thử"])
 
     # ── Tab 1: Hướng dẫn ──────────────────────────────────────

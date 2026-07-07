@@ -10,6 +10,11 @@ def simplify(n, d):
 def show():
     st.markdown("## 🍕 Phân Số")
 
+    # ── Liên kết SGK ──────────────────────────────────────────
+    from utils.pdf_viewer import render_page_links
+    with st.expander("📖 Xem trang SGK liên quan", expanded=False):
+        render_page_links("🍕 Phân Số")
+
     tab1, tab2, tab3, tab4 = st.tabs([
         "📖 Lý Thuyết", "⚖️ So Sánh", "➕ Cộng/Trừ", "🔢 Rút Gọn"
     ])

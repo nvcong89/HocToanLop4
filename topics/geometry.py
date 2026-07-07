@@ -5,6 +5,11 @@ from utils.generator import gen_perimeter_rectangle, gen_perimeter_square
 def show():
     st.markdown("## 📐 Hình Học")
 
+    # ── Liên kết SGK ──────────────────────────────────────────
+    from utils.pdf_viewer import render_page_links
+    with st.expander("📖 Xem trang SGK liên quan", expanded=False):
+        render_page_links("📐 Hình Học")
+
     tab1, tab2, tab3 = st.tabs(["📖 Lý Thuyết", "✏️ Luyện Tập", "🎨 Vẽ Hình"])
 
     with tab1:

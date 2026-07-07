@@ -5,6 +5,11 @@ from utils.generator import gen_addition, gen_subtraction
 def show():
     st.markdown("## ➕ Cộng & Trừ Các Số Có Nhiều Chữ Số")
 
+    # ── Liên kết SGK ──────────────────────────────────────────
+    from utils.pdf_viewer import render_page_links
+    with st.expander("📖 Xem trang SGK liên quan", expanded=False):
+        render_page_links("➕ Cộng & Trừ")
+
     tab1, tab2, tab3 = st.tabs(["📖 Lý Thuyết", "✏️ Luyện Tập", "🎯 Kiểm Tra Nhanh"])
 
     # ── Tab 1: Theory ──────────────────────────────────────────
