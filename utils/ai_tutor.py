@@ -5,10 +5,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── Khởi tạo client ───────────────────────────────────────────
-apikey = "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"
-#client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-client = Groq(api_key="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"
-)
+#apikey = "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"
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+#client = Groq(api_key="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")
+
 
 SYSTEM_PROMPT = """
 Bạn là một gia sư toán thân thiện, chuyên dạy học sinh lớp 4 Việt Nam.
