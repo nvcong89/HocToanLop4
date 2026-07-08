@@ -1,5 +1,6 @@
 import streamlit as st
 import random
+from utils.ai_tutor import explain_wrong_answer, generate_hint
 
 
 # ─── Problem Generators ───────────────────────────────────────
@@ -83,7 +84,6 @@ def gen_sharing_problem():
         hint = (
             f"**Phép tính:** {total_candy} ÷ {people} = **{each} cái**"
         )
-        # Use a simple integer answer (no remainder)
         return question, each, hint
     else:
         question = (
@@ -94,7 +94,6 @@ def gen_sharing_problem():
             f"**Phép tính:** {total_candy} ÷ {people} = {each} (dư {remainder})\n\n"
             f"Mỗi bạn nhận **{each} cái**, còn thừa **{remainder} cái**"
         )
-        # Encode: ans = each * 1000 + remainder (both < 1000 guaranteed)
         return question, each * 1000 + remainder, hint
 
 
@@ -149,18 +148,19 @@ def gen_age_problem():
 
 
 PROBLEM_GENERATORS = {
-    "🛒 Mua Sắm": gen_shopping_problem,
+    "🛒 Mua Sắm":    gen_shopping_problem,
     "🚗 Quãng Đường": gen_distance_problem,
-    "🌳 Vườn Cây": gen_farm_problem,
-    "🍬 Chia Kẹo": gen_sharing_problem,
-    "🏡 Diện Tích": gen_area_problem,
-    "👨‍👦 Tuổi Tác": gen_age_problem,
+    "🌳 Vườn Cây":   gen_farm_problem,
+    "🍬 Chia Kẹo":   gen_sharing_problem,
+    "🏡 Diện Tích":  gen_area_problem,
+    "👨‍👦 Tuổi Tác":  gen_age_problem,
 }
 
 
-# ─── Helper: check if problem is "sharing with remainder" type ────
+# ─── Helpers ──────────────────────────────────────────────────
+
 def _is_sharing_encoded(p):
-    """Return True if answer is encoded as each*1000 + remainder."""
+    """Return True nếu đáp án được mã hoá dạng each*1000 + remainder."""
     return (
         p["ans"] > 1000
         and p["ans"] % 1000 != 0
@@ -168,7 +168,6 @@ def _is_sharing_encoded(p):
     )
 
 
-# ─── Render input for one problem ─────────────────────────────
 def _render_input(i, p, key_prefix):
     if _is_sharing_encoded(p):
         c1, c2 = st.columns(2)
@@ -193,7 +192,6 @@ def _render_input(i, p, key_prefix):
         )
 
 
-# ─── Format answer for display ────────────────────────────────
 def _format_ans(p):
     if _is_sharing_encoded(p):
         each = p["ans"] // 1000
@@ -202,7 +200,17 @@ def _format_ans(p):
     return f"{p['ans']:,}".replace(",", ".")
 
 
+def _format_student_ans(p, user_val):
+    """Chuyển giá trị học sinh nhập thành chuỗi dễ đọc để truyền cho AI."""
+    if _is_sharing_encoded(p):
+        each = user_val // 1000
+        rem  = user_val % 1000
+        return f"mỗi bạn {each} cái, thừa {rem} cái"
+    return str(user_val)
+
+
 # ─── Main show() ──────────────────────────────────────────────
+
 def show():
     st.markdown("## 📝 Toán Đố — Bài Toán Có Lời Văn")
 
@@ -213,7 +221,7 @@ def show():
 
     tab1, tab2, tab3 = st.tabs(["📖 Hướng Dẫn", "✏️ Luyện Tập", "🎯 Thi Thử"])
 
-    # ── Tab 1: Hướng dẫn ──────────────────────────────────────
+    # ── Tab 1: Guide ───────────────────────────────────────────
     with tab1:
         st.markdown("""
         ### 📌 Các Bước Giải Toán Có Lời Văn
@@ -246,7 +254,7 @@ def show():
         | 👨‍👦 Tuổi Tác | Tính tuổi sau N năm |
         """)
 
-    # ── Tab 2: Luyện tập ──────────────────────────────────────
+    # ── Tab 2: Practice ────────────────────────────────────────
     with tab2:
         st.markdown("### ✏️ Luyện Tập Toán Đố")
 
@@ -257,7 +265,7 @@ def show():
                 list(PROBLEM_GENERATORS.keys()) + ["🔀 Ngẫu nhiên"],
                 key="wp_type_select"
             )
-            num_q = st.slider("Số bài:", 1, 10, 3, key="wp_num")
+            num_q = st.slider("Số bài:", 1, 5, 3, key="wp_num")
 
         with col2:
             if st.button("🎲 Tạo Bài Toán Đố", use_container_width=True, key="gen_wp"):
@@ -269,10 +277,14 @@ def show():
                         gen_fn = PROBLEM_GENERATORS[selected_type]
                     q, ans, hint = gen_fn()
                     problems.append({"q": q, "ans": ans, "hint": hint})
-                st.session_state["wp_problems"]    = problems
-                st.session_state["wp_user"]        = {}
-                st.session_state["wp_show_hints"]  = {}
-                st.session_state["wp_submitted"]   = False
+                st.session_state["wp_problems"]   = problems
+                st.session_state["wp_user"]       = {}
+                st.session_state["wp_show_hints"] = {}
+                st.session_state["wp_submitted"]  = False
+                # Reset AI state
+                st.session_state.pop("wp_wrong_list",   None)
+                st.session_state.pop("wp_hint_text",    None)
+                st.session_state.pop("wp_explain_text", None)
 
         if "wp_problems" in st.session_state and not st.session_state.get("wp_submitted", False):
             problems   = st.session_state["wp_problems"]
@@ -284,7 +296,6 @@ def show():
                 st.markdown(f"### 📝 Bài {i + 1}")
                 st.info(p["q"])
 
-                # Hint toggle
                 if st.button(f"💡 Xem Gợi Ý Bài {i + 1}", key=f"hint_btn_{i}"):
                     show_hints[i] = not show_hints.get(i, False)
                     st.session_state["wp_show_hints"] = show_hints
@@ -301,9 +312,12 @@ def show():
             st.markdown("---")
 
             if st.button("✅ Nộp Bài Toán Đố", use_container_width=True, key="submit_wp"):
-                correct = 0
+                correct    = 0
+                wrong_list = []
+
                 for i, p in enumerate(problems):
-                    if user.get(i) == p["ans"]:
+                    user_val = user.get(i)
+                    if user_val == p["ans"]:
                         correct += 1
                         st.markdown(
                             f'<div class="correct-answer">✅ Bài {i + 1}: Đúng! 🎉</div>',
@@ -317,12 +331,65 @@ def show():
                             f'</div>',
                             unsafe_allow_html=True
                         )
+                        wrong_list.append({
+                            "question": p["q"],
+                            "correct":  _format_ans(p),
+                            "student":  _format_student_ans(p, user_val or 0),
+                        })
+
                 st.session_state.score += correct
                 st.session_state.total += len(problems)
-                st.session_state["wp_submitted"] = True
+                st.session_state["wp_submitted"]  = True
+                st.session_state["wp_wrong_list"] = wrong_list
+                # Reset nội dung AI cũ khi nộp lại
+                st.session_state.pop("wp_hint_text",    None)
+                st.session_state.pop("wp_explain_text", None)
                 st.success(f"🎉 Bạn đúng {correct}/{len(problems)} bài!")
 
-    # ── Tab 3: Thi thử ────────────────────────────────────────
+        # ── AI hỗ trợ ─────────────────────────────────────────
+        wrong_list = st.session_state.get("wp_wrong_list", [])
+        if wrong_list:
+            st.markdown("---")
+            st.markdown("#### 🤖 Hỗ Trợ AI")
+
+            wrong_labels = [
+                f"Bài {i+1}: {w['question'][:60]}... (bạn trả lời '{w['student']}')"
+                for i, w in enumerate(wrong_list)
+            ]
+            selected_idx = 0
+            if len(wrong_list) > 1:
+                selected = st.selectbox(
+                    "Chọn bài muốn hỏi AI:",
+                    wrong_labels,
+                    key="wp_select_wrong"
+                )
+                selected_idx = wrong_labels.index(selected)
+            chosen = wrong_list[selected_idx]
+
+            col_hint, col_explain = st.columns(2)
+
+            with col_hint:
+                if st.button("💡 Gợi ý", key="wp_hint"):
+                    with st.spinner("AI đang nghĩ..."):
+                        st.session_state["wp_hint_text"] = generate_hint(
+                            chosen["question"], "Toán Đố Có Lời Văn"
+                        )
+                if "wp_hint_text" in st.session_state:
+                    st.info(f"💡 {st.session_state['wp_hint_text']}")
+
+            with col_explain:
+                if st.button("🤖 Giải thích", key="wp_explain"):
+                    with st.spinner("AI đang giải thích..."):
+                        st.session_state["wp_explain_text"] = explain_wrong_answer(
+                            question       = chosen["question"],
+                            correct_answer = chosen["correct"],
+                            student_answer = chosen["student"],
+                            topic          = "Toán Đố Có Lời Văn"
+                        )
+                if "wp_explain_text" in st.session_state:
+                    st.warning(f"🤖 {st.session_state['wp_explain_text']}")
+
+    # ── Tab 3: Exam ────────────────────────────────────────────
     with tab3:
         st.markdown("### 🎯 Thi Thử — 5 Bài Ngẫu Nhiên")
         st.markdown("Hoàn thành 5 bài toán đố ngẫu nhiên để nhận điểm tổng kết!")
@@ -337,6 +404,10 @@ def show():
             st.session_state["exam_problems"]  = exam_problems
             st.session_state["exam_user"]      = {}
             st.session_state["exam_submitted"] = False
+            # Reset AI state
+            st.session_state.pop("exam_wrong_list",   None)
+            st.session_state.pop("exam_hint_text",    None)
+            st.session_state.pop("exam_explain_text", None)
 
         if (
             "exam_problems" in st.session_state
@@ -353,14 +424,28 @@ def show():
             st.session_state["exam_user"] = exam_user
 
             if st.button("📨 Nộp Bài Thi", use_container_width=True, key="submit_exam"):
-                correct = sum(
-                    1 for i, p in enumerate(exam_problems)
-                    if exam_user.get(i) == p["ans"]
-                )
-                st.session_state["exam_submitted"] = True
-                st.session_state["exam_score"]     = correct
+                correct    = 0
+                wrong_list = []
+
+                for i, p in enumerate(exam_problems):
+                    user_val = exam_user.get(i)
+                    if user_val == p["ans"]:
+                        correct += 1
+                    else:
+                        wrong_list.append({
+                            "question": p["q"],
+                            "correct":  _format_ans(p),
+                            "student":  _format_student_ans(p, user_val or 0),
+                        })
+
+                st.session_state["exam_submitted"]  = True
+                st.session_state["exam_score"]      = correct
+                st.session_state["exam_wrong_list"] = wrong_list
                 st.session_state.score += correct
                 st.session_state.total += 5
+                # Reset nội dung AI cũ khi thi lại
+                st.session_state.pop("exam_hint_text",    None)
+                st.session_state.pop("exam_explain_text", None)
 
         if st.session_state.get("exam_submitted", False):
             score = st.session_state.get("exam_score", 0)
@@ -401,3 +486,46 @@ def show():
                         f'</div>',
                         unsafe_allow_html=True
                     )
+
+            # ── AI hỗ trợ ─────────────────────────────────────
+            wrong_list = st.session_state.get("exam_wrong_list", [])
+            if wrong_list:
+                st.markdown("---")
+                st.markdown("#### 🤖 Hỗ Trợ AI")
+
+                wrong_labels = [
+                    f"Bài {i+1}: {w['question'][:60]}... (bạn trả lời '{w['student']}')"
+                    for i, w in enumerate(wrong_list)
+                ]
+                selected_idx = 0
+                if len(wrong_list) > 1:
+                    selected = st.selectbox(
+                        "Chọn bài muốn hỏi AI:",
+                        wrong_labels,
+                        key="exam_select_wrong"
+                    )
+                    selected_idx = wrong_labels.index(selected)
+                chosen = wrong_list[selected_idx]
+
+                col_hint, col_explain = st.columns(2)
+
+                with col_hint:
+                    if st.button("💡 Gợi ý", key="exam_hint"):
+                        with st.spinner("AI đang nghĩ..."):
+                            st.session_state["exam_hint_text"] = generate_hint(
+                                chosen["question"], "Toán Đố Có Lời Văn"
+                            )
+                    if "exam_hint_text" in st.session_state:
+                        st.info(f"💡 {st.session_state['exam_hint_text']}")
+
+                with col_explain:
+                    if st.button("🤖 Giải thích", key="exam_explain"):
+                        with st.spinner("AI đang giải thích..."):
+                            st.session_state["exam_explain_text"] = explain_wrong_answer(
+                                question       = chosen["question"],
+                                correct_answer = chosen["correct"],
+                                student_answer = chosen["student"],
+                                topic          = "Toán Đố Có Lời Văn"
+                            )
+                    if "exam_explain_text" in st.session_state:
+                        st.warning(f"🤖 {st.session_state['exam_explain_text']}")
