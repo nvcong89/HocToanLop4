@@ -170,6 +170,7 @@ defaults = {
     "sgk_page":      1,
     "sgk_lesson":    "",
     "chat_history":  [],
+    "history_fallback": [],
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -189,13 +190,14 @@ with st.sidebar:
         "📐 Hình Học"       : "geometry",
         "📏 Đo Lường"       : "measurement",
         "📝 Toán Đố"        : "word_problems",
+        "👨‍👩‍👧 Lịch Sử Làm Bài" : "history",
     }
 
     for label in NAV_TOPICS:
         if st.button(label, key=f"nav_{label}", use_container_width=True):
             st.session_state["current_topic"] = label
-            # Chỉ reset điểm khi chuyển sang chủ đề luyện tập (không phải home/sgk)
-            if NAV_TOPICS[label] not in ("home", "sgk"):
+            # Chỉ reset điểm khi chuyển sang chủ đề luyện tập (không phải home/sgk/history)
+            if NAV_TOPICS[label] not in ("home", "sgk", "history"):
                 st.session_state["score"] = 0
                 st.session_state["total"] = 0
             st.rerun()
@@ -326,6 +328,10 @@ elif topic == "📏 Đo Lường":
 
 elif topic == "📝 Toán Đố":
     word_problems.show()
+
+elif topic == "👨‍👩‍👧 Lịch Sử Làm Bài":
+    from utils.history import show_history_page
+    show_history_page()
 
 # ── Sách Giáo Khoa ────────────────────────────────────────────
 elif topic == "📖 Sách Giáo Khoa":

@@ -87,9 +87,17 @@ def show():
             if st.button("✅ Kiểm Tra So Sánh", key="check_compare"):
                 correct   = 0
                 wrong_list = []
+                details = []
 
                 for i, (n1, d1, n2, d2, correct_sign) in enumerate(problems):
-                    if user_signs[i] == correct_sign:
+                    is_ok = user_signs[i] == correct_sign
+                    details.append({
+                        "question": f"{n1}/{d1} ☐ {n2}/{d2}",
+                        "correct_answer": correct_sign,
+                        "student_answer": user_signs[i],
+                        "is_correct": is_ok
+                    })
+                    if is_ok:
                         correct += 1
                         st.markdown(
                             f'<div class="correct-answer">✅ Câu {i+1}: '
@@ -113,6 +121,10 @@ def show():
                 st.session_state.total += len(problems)
                 st.success(f"🎉 Đúng {correct}/{len(problems)} câu!")
                 st.session_state["cmp_wrong_list"] = wrong_list
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("🍕 Phân Số", "So Sánh", details, correct, len(problems))
                 # Reset nội dung AI cũ khi kiểm tra lại
                 st.session_state.pop("cmp_hint_text",    None)
                 st.session_state.pop("cmp_explain_text", None)
@@ -190,11 +202,18 @@ def show():
             if st.button("✅ Kiểm Tra", key="check_frac_add"):
                 correct    = 0
                 wrong_list = []
+                details = []
 
                 for i, (n1, d1, n2, d2, rn, rd, sym) in enumerate(problems):
                     un = user_ans.get(f"{i}_n", 0)
                     ud = user_ans.get(f"{i}_d", 1)
                     ok = (un == rn and ud == rd) or (ud != 0 and rn * ud == rd * un)
+                    details.append({
+                        "question": f"{n1}/{d1} {sym} {n2}/{d2}",
+                        "correct_answer": f"{rn}/{rd}",
+                        "student_answer": f"{un}/{ud}",
+                        "is_correct": ok
+                    })
                     if ok:
                         correct += 1
                         st.markdown(
@@ -218,6 +237,10 @@ def show():
                 st.session_state.total += len(problems)
                 st.success(f"🎉 Đúng {correct}/{len(problems)} câu!")
                 st.session_state["add_wrong_list"] = wrong_list
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("🍕 Phân Số", "Cộng/Trừ", details, correct, len(problems))
                 # Reset nội dung AI cũ khi kiểm tra lại
                 st.session_state.pop("add_hint_text",    None)
                 st.session_state.pop("add_explain_text", None)
@@ -299,11 +322,18 @@ def show():
             if st.button("✅ Kiểm Tra Rút Gọn", key="check_simplify"):
                 correct    = 0
                 wrong_list = []
+                details = []
 
                 for i, (n, d, rn, rd) in enumerate(problems):
                     un = user_ans.get(f"{i}_n", 0)
                     ud = user_ans.get(f"{i}_d", 1)
                     ok = (un == rn and ud == rd)
+                    details.append({
+                        "question": f"Rút gọn phân số {n}/{d}",
+                        "correct_answer": f"{rn}/{rd}",
+                        "student_answer": f"{un}/{ud}",
+                        "is_correct": ok
+                    })
                     if ok:
                         correct += 1
                         st.markdown(
@@ -327,6 +357,10 @@ def show():
                 st.session_state.total += len(problems)
                 st.success(f"🎉 Đúng {correct}/{len(problems)} câu!")
                 st.session_state["simp_wrong_list"] = wrong_list
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("🍕 Phân Số", "Rút Gọn", details, correct, len(problems))
                 # Reset nội dung AI cũ khi kiểm tra lại
                 st.session_state.pop("simp_hint_text",    None)
                 st.session_state.pop("simp_explain_text", None)

@@ -102,15 +102,29 @@ def show():
 
             if st.button("✅ Kiểm Tra", key="check_mul_div", use_container_width=True):
                 correct = 0
+                details = []
                 for i, p in enumerate(problems):
                     uq = user.get(f"{i}_q", 0)
                     ur = user.get(f"{i}_r", 0)
                     if p["type"] == "mul":
                         ok = uq == p["ans"]
+                        q_str = f"{p['a']} × {p['b']}"
+                        ans_str = str(p["ans"])
+                        stu_str = str(uq)
                         label = f"{p['a']:,} × {p['b']:,} = {p['ans']:,}".replace(",", ".")
                     else:
                         ok = uq == p["ans"] and ur == p["rem"]
+                        q_str = f"{p['a']} ÷ {p['b']}"
+                        ans_str = f"{p['ans']} (dư {p['rem']})"
+                        stu_str = f"{uq} (dư {ur})"
                         label = f"{p['a']:,} ÷ {p['b']:,} = {p['ans']:,} (dư {p['rem']})".replace(",", ".")
+
+                    details.append({
+                        "question": q_str,
+                        "correct_answer": ans_str,
+                        "student_answer": stu_str,
+                        "is_correct": ok
+                    })
 
                     if ok:
                         correct += 1
@@ -121,6 +135,10 @@ def show():
                 st.session_state.score += correct
                 st.session_state.total += len(problems)
                 st.success(f"🎉 Bạn đúng {correct}/{len(problems)} câu!")
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("✖️ Nhân & Chia", "Luyện Tập", details, correct, len(problems))
 
     with tab3:
         st.markdown("### 🧮 Bảng Nhân Tương Tác")
@@ -142,9 +160,20 @@ def show():
             st.markdown(f"### {a} × {b} = ?")
             user_tt = st.number_input("Đáp án:", key="tt_ans", value=0, step=1)
             if st.button("✅ Kiểm Tra", key="check_tt"):
-                if user_tt == ans:
+                ok = (user_tt == ans)
+                details = [{
+                    "question": f"{a} × {b}",
+                    "correct_answer": str(ans),
+                    "student_answer": str(user_tt),
+                    "is_correct": ok
+                }]
+                if ok:
                     st.success(f"🎉 Đúng rồi! {a} × {b} = {ans}")
                     st.session_state.score += 1
                 else:
                     st.error(f"❌ Sai! {a} × {b} = {ans}")
                 st.session_state.total += 1
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("✖️ Nhân & Chia", "Đố Vui Bảng Nhân", details, 1 if ok else 0, 1)

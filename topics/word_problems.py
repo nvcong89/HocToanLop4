@@ -314,10 +314,18 @@ def show():
             if st.button("✅ Nộp Bài Toán Đố", use_container_width=True, key="submit_wp"):
                 correct    = 0
                 wrong_list = []
+                details    = []
 
                 for i, p in enumerate(problems):
                     user_val = user.get(i)
-                    if user_val == p["ans"]:
+                    is_ok = user_val == p["ans"]
+                    details.append({
+                        "question": p["q"],
+                        "correct_answer": _format_ans(p),
+                        "student_answer": _format_student_ans(p, user_val or 0),
+                        "is_correct": is_ok
+                    })
+                    if is_ok:
                         correct += 1
                         st.markdown(
                             f'<div class="correct-answer">✅ Bài {i + 1}: Đúng! 🎉</div>',
@@ -341,6 +349,10 @@ def show():
                 st.session_state.total += len(problems)
                 st.session_state["wp_submitted"]  = True
                 st.session_state["wp_wrong_list"] = wrong_list
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("📝 Toán Đố", "Luyện Tập", details, correct, len(problems))
                 # Reset nội dung AI cũ khi nộp lại
                 st.session_state.pop("wp_hint_text",    None)
                 st.session_state.pop("wp_explain_text", None)
@@ -426,10 +438,18 @@ def show():
             if st.button("📨 Nộp Bài Thi", use_container_width=True, key="submit_exam"):
                 correct    = 0
                 wrong_list = []
+                details    = []
 
                 for i, p in enumerate(exam_problems):
                     user_val = exam_user.get(i)
-                    if user_val == p["ans"]:
+                    is_ok = user_val == p["ans"]
+                    details.append({
+                        "question": p["q"],
+                        "correct_answer": _format_ans(p),
+                        "student_answer": _format_student_ans(p, user_val or 0),
+                        "is_correct": is_ok
+                    })
+                    if is_ok:
                         correct += 1
                     else:
                         wrong_list.append({
@@ -443,6 +463,10 @@ def show():
                 st.session_state["exam_wrong_list"] = wrong_list
                 st.session_state.score += correct
                 st.session_state.total += 5
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("📝 Toán Đố", "Thi Thử", details, correct, 5)
                 # Reset nội dung AI cũ khi thi lại
                 st.session_state.pop("exam_hint_text",    None)
                 st.session_state.pop("exam_explain_text", None)

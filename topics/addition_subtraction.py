@@ -106,9 +106,18 @@ def show():
             if st.button("✅ Kiểm Tra Đáp Án", use_container_width=True):
                 correct    = 0
                 wrong_list = []
+                details    = []
 
                 for i, p in enumerate(problems):
-                    if answers.get(i) == p["ans"]:
+                    is_ok = (answers.get(i) == p["ans"])
+                    q_str = f"{p['a']} {p['op']} {p['b']}"
+                    details.append({
+                        "question": q_str,
+                        "correct_answer": str(p["ans"]),
+                        "student_answer": str(answers.get(i, 0)),
+                        "is_correct": is_ok
+                    })
+                    if is_ok:
                         correct += 1
                         st.markdown(
                             f'<div class="correct-answer">✅ Câu {i+1}: '
@@ -125,7 +134,7 @@ def show():
                             unsafe_allow_html=True
                         )
                         wrong_list.append({
-                            "question": f"{p['a']} {p['op']} {p['b']}",
+                            "question": q_str,
                             "correct":  str(p["ans"]),
                             "student":  str(answers.get(i, 0)),
                         })
@@ -134,6 +143,10 @@ def show():
                 st.session_state.total += len(problems)
                 st.success(f"🎉 Bạn đúng {correct}/{len(problems)} câu!")
                 st.session_state["prac_wrong_list"] = wrong_list
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("➕ Cộng & Trừ", "Luyện Tập", details, correct, len(problems))
                 # Reset nội dung AI cũ khi kiểm tra lại
                 st.session_state.pop("prac_hint_text",    None)
                 st.session_state.pop("prac_explain_text", None)
@@ -231,9 +244,17 @@ def show():
             if st.button("✅ Nộp Bài", key="submit_quick_add"):
                 score      = 0
                 wrong_list = []
+                details    = []
 
                 for i, (v, correct_val, question_str) in user_ans.items():
-                    if v == correct_val:
+                    is_ok = (v == correct_val)
+                    details.append({
+                        "question": question_str,
+                        "correct_answer": str(correct_val),
+                        "student_answer": str(v),
+                        "is_correct": is_ok
+                    })
+                    if is_ok:
                         score += 1
                         st.markdown(
                             f'<div class="correct-answer">✅ Câu {i+1}: '
@@ -256,6 +277,10 @@ def show():
                 st.session_state.total += len(quizzes)
                 st.success(f"🎉 Bạn đúng {score}/{len(quizzes)} câu!")
                 st.session_state["quiz_wrong_list"] = wrong_list
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("➕ Cộng & Trừ", "Kiểm Tra Nhanh", details, score, len(quizzes))
                 # Reset nội dung AI cũ khi nộp bài lại
                 st.session_state.pop("quiz_hint_text",    None)
                 st.session_state.pop("quiz_explain_text", None)

@@ -82,14 +82,41 @@ def show():
 
             if st.button("✅ Kiểm Tra Hình Học", key="check_geo"):
                 correct = sum(1 for v, ans in user.values() if v == ans)
+                details = []
                 for i, (v, ans) in user.items():
-                    if v == ans:
+                    p = problems[i]
+                    if p["shape"] == "rect":
+                        if p["ask"] == "perimeter":
+                            q_str = f"Hình chữ nhật có CD {p['a']} cm, CR {p['b']} cm. Tính chu vi (cm)."
+                        elif p["ask"] == "area":
+                            q_str = f"Hình chữ nhật có CD {p['a']} cm, CR {p['b']} cm. Tính diện tích (cm²)."
+                        else:
+                            q_str = f"Hình chữ nhật có chu vi {p['p']} cm, CD {p['a']} cm. Tính chiều rộng (cm)."
+                    else:
+                        if p["ask"] == "perimeter":
+                            q_str = f"Hình vuông có cạnh {p['a']} cm. Tính chu vi (cm)."
+                        else:
+                            q_str = f"Hình vuông có cạnh {p['a']} cm. Tính diện tích (cm²)."
+
+                    is_ok = (v == ans)
+                    details.append({
+                        "question": q_str,
+                        "correct_answer": f"{ans} cm" if p["ask"] != "area" else f"{ans} cm²",
+                        "student_answer": f"{v} cm" if p["ask"] != "area" else f"{v} cm²",
+                        "is_correct": is_ok
+                    })
+
+                    if is_ok:
                         st.markdown(f'<div class="correct-answer">✅ Câu {i+1}: {ans} — Đúng!</div>', unsafe_allow_html=True)
                     else:
                         st.markdown(f'<div class="wrong-answer">❌ Câu {i+1}: Đáp án đúng là {ans}</div>', unsafe_allow_html=True)
                 st.session_state.score += correct
                 st.session_state.total += len(problems)
                 st.success(f"🎉 Đúng {correct}/{len(problems)} câu!")
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("📐 Hình Học", "Luyện Tập", details, correct, len(problems))
 
     with tab3:
         st.markdown("### 🎨 Công Cụ Tính Nhanh")

@@ -68,8 +68,17 @@ def show():
 
             if st.button("✅ Kiểm Tra Đổi Đơn Vị", key="check_unit"):
                 correct = 0
+                details = []
                 for i, (val, from_u, to_u, ans) in enumerate(problems):
-                    if user.get(i) == ans:
+                    stu_val = user.get(i, 0)
+                    is_ok = (stu_val == ans)
+                    details.append({
+                        "question": f"{val} {from_u} = ? {to_u}",
+                        "correct_answer": f"{ans} {to_u}",
+                        "student_answer": f"{stu_val} {to_u}",
+                        "is_correct": is_ok
+                    })
+                    if is_ok:
                         correct += 1
                         st.markdown(f'<div class="correct-answer">✅ Câu {i+1}: {val} {from_u} = {ans} {to_u} — Đúng!</div>', unsafe_allow_html=True)
                     else:
@@ -77,6 +86,10 @@ def show():
                 st.session_state.score += correct
                 st.session_state.total += len(problems)
                 st.success(f"🎉 Đúng {correct}/{len(problems)} câu!")
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("📏 Đo Lường", "Đổi Đơn Vị", details, correct, len(problems))
 
     with tab3:
         st.markdown("### ⏰ Bài Tập Thời Gian")
@@ -122,9 +135,17 @@ def show():
 
             if st.button("✅ Kiểm Tra Thời Gian", key="check_time"):
                 correct = 0
+                details = []
                 for i, tp in enumerate(time_problems):
                     user_val = user_time.get(i, "").strip()
-                    if user_val == tp["ans"]:
+                    is_ok = (user_val == tp["ans"])
+                    details.append({
+                        "question": tp["q"],
+                        "correct_answer": tp["ans"],
+                        "student_answer": user_val,
+                        "is_correct": is_ok
+                    })
+                    if is_ok:
                         correct += 1
                         st.markdown(f'<div class="correct-answer">✅ Câu {i+1}: {tp["ans"]} — Đúng!</div>', unsafe_allow_html=True)
                     else:
@@ -132,4 +153,8 @@ def show():
                 st.session_state.score += correct
                 st.session_state.total += len(time_problems)
                 st.success(f"🎉 Đúng {correct}/{len(time_problems)} câu!")
+                
+                # Lưu lịch sử
+                from utils.history import save_attempt
+                save_attempt("📏 Đo Lường", "Bài Tập Thời Gian", details, correct, len(time_problems))
 
