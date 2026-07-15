@@ -1,17 +1,56 @@
-import os
 import json
 from datetime import datetime
 import streamlit as st
+from streamlit_local_storage import LocalStorage
 
-HISTORY_FILE = "data/history.json"
+# Khởi tạo đối tượng LocalStorage ở client
+localS = LocalStorage()
+
+
+def load_history():
+    """Tải toàn bộ lịch sử kết quả từ Browser Local Storage.
+
+    Sử dụng cơ chế cache trong st.session_state['history_cached'] để tối ưu hóa hiệu năng
+    và tránh độ trễ bất đồng bộ (async lag) của Streamlit Custom Components.
+    """
+    if "history_cached" in st.session_state:
+        return st.session_state["history_cached"]
+
+    try:
+        val = localS.getItem("student_history")
+    except Exception:
+        val = None
+
+    if val is not None:
+        history = []
+        try:
+            raw_str = None
+            if isinstance(val, str):
+                raw_str = val
+            elif isinstance(val, dict):
+                raw_str = (
+                    val.get("value")
+                    if isinstance(val.get("value"), str)
+                    else json.dumps(val.get("value"), ensure_ascii=False)
+                )
+
+            if raw_str:
+                history = json.loads(raw_str)
+            elif isinstance(val, list):
+                history = val
+        except Exception:
+            history = []
+
+        # Lưu vào cache để sử dụng lập tức cho các lần chạy sau
+        st.session_state["history_cached"] = history
+        return history
+
+    # Trong khi chờ LocalStorage tải, trả về danh sách fallback trong Session State
+    return st.session_state.get("history_fallback", [])
 
 
 def save_attempt(topic_name, activity_type, details, score, total):
-    """Lưu kết quả làm bài của học sinh.
-
-    Hỗ trợ ghi file JSON cục bộ, nếu gặp lỗi ghi file (như phân quyền hoặc cloud ephemeral fs)
-    sẽ tự động lưu trữ tạm thời vào st.session_state['history_fallback'].
-    """
+    """Lưu kết quả làm bài của học sinh trực tiếp vào Browser Local Storage."""
     record = {
         "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         "topic": topic_name,
@@ -21,64 +60,35 @@ def save_attempt(topic_name, activity_type, details, score, total):
         "details": details,
     }
 
-    if "history_fallback" not in st.session_state:
-        st.session_state["history_fallback"] = []
+    history = load_history()
 
-    try:
-        # Tạo thư mục data nếu chưa có
-        os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
-
-        history = []
-        if os.path.exists(HISTORY_FILE):
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                try:
-                    history = json.load(f)
-                    if not isinstance(history, list):
-                        history = []
-                except Exception:
-                    history = []
-
+    # Tránh lưu trùng lặp bản ghi
+    if record not in history:
         history.append(record)
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(history, f, ensure_ascii=False, indent=2)
+
+    # Cập nhật cache và bộ nhớ fallback
+    st.session_state["history_cached"] = history
+    st.session_state["history_fallback"] = history
+
+    # Đồng bộ ghi vào Browser Local Storage dưới dạng chuỗi JSON
+    try:
+        localS.setItem("student_history", json.dumps(history, ensure_ascii=False))
     except Exception:
-        # Fallback lưu vào Session State nếu không ghi được file
-        st.session_state["history_fallback"].append(record)
-
-
-def load_history():
-    """Tải toàn bộ lịch sử kết quả từ tệp tin cục bộ kết hợp với session fallback."""
-    history = []
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                history = json.load(f)
-                if not isinstance(history, list):
-                    history = []
-        except Exception:
-            pass
-
-    fallback = st.session_state.get("history_fallback", [])
-    # Kết hợp hai danh sách, tránh trùng lặp bản ghi trùng khớp hoàn toàn
-    combined = list(history)
-    for item in fallback:
-        if item not in combined:
-            combined.append(item)
-    return combined
+        pass
 
 
 def clear_history():
-    """Xóa lịch sử bài làm (cả trên tệp và bộ nhớ tạm)."""
+    """Xóa lịch sử bài làm trong cả cache và Browser Local Storage."""
+    st.session_state.pop("history_cached", None)
+    st.session_state["history_fallback"] = []
     try:
-        if os.path.exists(HISTORY_FILE):
-            os.remove(HISTORY_FILE)
+        localS.setItem("student_history", "[]")
     except Exception:
         pass
-    st.session_state["history_fallback"] = []
 
 
 def import_history(uploaded_data):
-    """Khôi phục dữ liệu từ tệp tin JSON tải lên."""
+    """Khôi phục dữ liệu từ tệp tin JSON tải lên trình duyệt."""
     if not isinstance(uploaded_data, list):
         return False, "Dữ liệu không đúng định dạng JSON danh sách!"
 
@@ -103,17 +113,18 @@ def import_history(uploaded_data):
         if r not in merged:
             merged.append(r)
 
+    # Ghi vào bộ nhớ đệm
+    st.session_state["history_cached"] = merged
+    st.session_state["history_fallback"] = merged
+
+    # Ghi đè vào Local Storage
     try:
-        os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(merged, f, ensure_ascii=False, indent=2)
-        st.session_state["history_fallback"] = []
+        localS.setItem("student_history", json.dumps(merged, ensure_ascii=False))
         return True, f"Khôi phục thành công {len(valid_records)} bài làm!"
-    except Exception:
-        st.session_state["history_fallback"] = merged
+    except Exception as e:
         return (
             True,
-            f"Khôi phục tạm thời {len(valid_records)} bài làm vào Session State (Do không thể ghi đè file)!",
+            f"Khôi phục tạm thời {len(valid_records)} bài làm vào Bộ nhớ tạm (Lỗi LocalStorage: {str(e)})!",
         )
 
 
@@ -130,7 +141,7 @@ def show_history_page():
 
     if not history:
         st.info("🧒 Bé chưa thực hiện bài luyện tập nào. Hãy khuyến khích bé chọn một chủ đề học ở menu bên trái nhé!")
-        
+
         # Vẫn cho phép nhập file backup cũ ở màn hình trống
         with st.expander("📥 Nhập Lịch Sử Cũ (Từ File Backup)", expanded=True):
             uploaded_file = st.file_uploader(
@@ -166,12 +177,12 @@ def show_history_page():
     st.markdown("---")
 
     # ── 2. Sao lưu & Khôi phục ───────────────────────────────────────
-    with st.expander("💾 Sao Lưu & Phục Hồi Dữ Liệu (Streamlit Cloud)", expanded=False):
+    with st.expander("💾 Sao Lưu & Phục Hồi Dữ Liệu", expanded=False):
         st.markdown("""
-        *Lưu ý: Nếu ứng dụng này được deploy trên Streamlit Cloud, dữ liệu lịch sử có thể bị mất khi máy chủ restart. 
-        Phụ huynh hãy tải xuống file sao lưu để lưu giữ trên máy tính cá nhân và khôi phục khi cần thiết.*
+        *Lịch sử học tập của con hiện được tự động lưu trữ trên trình duyệt của thiết bị này (iPad/Máy tính).*
+        *Nếu phụ huynh muốn xem lịch sử của con trên một thiết bị khác, hãy tải xuống file sao lưu ở thiết bị này và tải lên thiết bị mới.*
         """)
-        
+
         col_down, col_up = st.columns(2)
         with col_down:
             history_json = json.dumps(history, ensure_ascii=False, indent=2)
@@ -182,7 +193,7 @@ def show_history_page():
                 mime="application/json",
                 use_container_width=True,
             )
-            
+
         with col_up:
             uploaded_file = st.file_uploader(
                 "Tải lên tệp sao lưu cũ để nhập dữ liệu:", type="json", key="active_import"
@@ -224,7 +235,7 @@ def show_history_page():
 
     # ── 4. Nhật ký chi tiết các lần làm bài ────────────────────────────
     st.markdown("### 🕒 Nhật Ký Làm Bài Chi Tiết (Mới nhất trước)")
-    
+
     for idx, h in enumerate(reversed(history)):
         title = f"🕒 {h['timestamp']} — {h['topic']} ({h['activity']}) — Kết quả: {h['score']}/{h['total']} câu đúng"
         with st.expander(title):

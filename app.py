@@ -170,7 +170,7 @@ defaults = {
     "sgk_page":      1,
     "sgk_lesson":    "",
     "chat_history":  [],
-    "history_fallback": [],
+    # history_fallback & history_cached quản lý bởi utils/history.py
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -200,6 +200,9 @@ with st.sidebar:
             if NAV_TOPICS[label] not in ("home", "sgk", "history"):
                 st.session_state["score"] = 0
                 st.session_state["total"] = 0
+            # Xóa cache lịch sử để đọc lại từ Browser LocalStorage khi mở trang lịch sử
+            if NAV_TOPICS[label] == "history":
+                st.session_state.pop("history_cached", None)
             st.rerun()
 
     st.markdown("---")
